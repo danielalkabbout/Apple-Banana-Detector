@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: apple-banana-detector
+    runtime: docker
+    build:
+      dockerfile: Dockerfile
+    env: python
+    envVars:
+      - key: FLASK_APP
+        value: app.py
+    port: 5000

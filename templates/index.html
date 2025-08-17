@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Apple & Banana Detector</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Upload an Image</h1>
+        <form method="post" enctype="multipart/form-data">
+            <input type="file" name="file" accept="image/*" required>
+            <button type="submit">Detect</button>
+        </form>
+        {% if result %}
+        <div class="result">
+            <h3>Detection Result:</h3>
+            <img src="/static/uploads/{{ result }}" alt="Result">
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
