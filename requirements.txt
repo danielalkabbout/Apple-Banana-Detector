@@ -1,5 +1,4 @@
 Flask>=2.0.3
+tensorflow-cpu>=2.6.0  # Lighter CPU-only version
 opencv-python>=4.5.3
-torch>=1.9.0  # For .pth model loading
-torchvision>=0.10.0  # For image transformations
 numpy>=1.21.2
