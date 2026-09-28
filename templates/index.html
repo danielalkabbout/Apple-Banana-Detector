@@ -1,22 +1,184 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Apple & Banana Detector</title>
-    <link rel="stylesheet" href="/static/styles.css">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Fruit Detector</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <div class="container">
-        <h1>Upload an Image</h1>
-        <form method="post" enctype="multipart/form-data">
-            <input type="file" name="file" accept="image/*" required>
-            <button type="submit">Detect</button>
-        </form>
-        {% if result %}
-        <div class="result">
-            <h3>Detection Result:</h3>
-            <img src="/static/uploads/{{ result }}" alt="Result">
-        </div>
+    <div class="glow glow-apple" aria-hidden="true"></div>
+    <div class="glow glow-banana" aria-hidden="true"></div>
+
+    <header class="hero">
+        <span class="pill"><span class="pulse"></span> Powered by YOLOv8</span>
+        <h1>Fruit <span class="gradient-text">Detector</span></h1>
+        <p>Drop in a photo and the model will find every apple and banana in it.</p>
+    </header>
+
+    <main class="container">
+        <section class="card upload-card">
+            <form id="upload-form" method="POST" enctype="multipart/form-data">
+                <label id="dropzone" class="dropzone" for="file-input">
+                    <input id="file-input" type="file" name="file" accept=".png,.jpg,.jpeg" required>
+                    <div class="dropzone-empty">
+                        <div class="dropzone-icon">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 16V4m0 0L7 9m5-5 5 5M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+                            </svg>
+                        </div>
+                        <strong>Drop an image here</strong>
+                        <span>or <u>browse your files</u> &middot; PNG or JPG, up to 10 MB</span>
+                    </div>
+                    <div class="dropzone-preview" hidden>
+                        <div class="preview-frame">
+                            <img id="preview-img" alt="Selected image preview">
+                            <div class="scanline" aria-hidden="true"></div>
+                        </div>
+                        <span id="preview-name"></span>
+                    </div>
+                </label>
+
+                <button id="submit-btn" class="btn" type="submit" disabled>
+                    <span class="spinner" aria-hidden="true"></span>
+                    <span class="btn-label">Detect fruit</span>
+                </button>
+            </form>
+
+            {% if error %}
+            <div class="alert" role="alert">{{ error }}</div>
+            {% endif %}
+        </section>
+
+        {% if processed %}
+        {% set apples = detections | selectattr('label', 'equalto', 'apple') | list %}
+        {% set bananas = detections | selectattr('label', 'equalto', 'banana') | list %}
+        <section id="results" class="card results">
+            <div class="results-header">
+                <div>
+                    <span class="eyebrow">Results</span>
+                    <h2>
+                        {% if detections %}
+                        Found {{ detections|length }} fruit{{ 's' if detections|length != 1 }}
+                        {% else %}
+                        No apples or bananas found
+                        {% endif %}
+                    </h2>
+                </div>
+                <div class="stats">
+                    <div class="stat stat-apple">
+                        <span class="stat-value">{{ apples|length }}</span>
+                        <span class="stat-label">Apple{{ 's' if apples|length != 1 }}</span>
+                    </div>
+                    <div class="stat stat-banana">
+                        <span class="stat-value">{{ bananas|length }}</span>
+                        <span class="stat-label">Banana{{ 's' if bananas|length != 1 }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="results-body">
+                <div class="viewer">
+                    <div class="tabs" role="tablist">
+                        <button class="tab active" type="button" data-target="img-processed" role="tab">Detections</button>
+                        <button class="tab" type="button" data-target="img-original" role="tab">Original</button>
+                    </div>
+                    <div class="image-frame">
+                        <img id="img-processed" src="{{ url_for('static', filename='uploads/' + processed) }}" alt="Image with detected fruit outlined">
+                        <img id="img-original" src="{{ url_for('static', filename='uploads/' + original) }}" alt="Original uploaded image" hidden>
+                    </div>
+                </div>
+
+                {% if detections %}
+                <ul class="detections">
+                    {% for d in detections|sort(attribute='confidence', reverse=true) %}
+                    <li class="detection detection-{{ d.label }}" style="--i: {{ loop.index0 }}">
+                        <div class="detection-top">
+                            <span class="badge"><span class="dot"></span>{{ d.label|capitalize }}</span>
+                            <span class="confidence">{{ '%.0f'|format(d.confidence * 100) }}%</span>
+                        </div>
+                        <div class="bar"><span style="--w: {{ '%.0f'|format(d.confidence * 100) }}%"></span></div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="empty-note">
+                    <strong>Nothing detected</strong>
+                    <p>Try a clearer photo, or one where the fruit takes up more of the frame.</p>
+                </div>
+                {% endif %}
+            </div>
+        </section>
         {% endif %}
-    </div>
+    </main>
+
+    <footer class="site-footer">Detections below 50% confidence are hidden.</footer>
+
+    <script>
+        const input = document.getElementById('file-input');
+        const dropzone = document.getElementById('dropzone');
+        const emptyView = dropzone.querySelector('.dropzone-empty');
+        const previewView = dropzone.querySelector('.dropzone-preview');
+        const previewImg = document.getElementById('preview-img');
+        const previewName = document.getElementById('preview-name');
+        const submitBtn = document.getElementById('submit-btn');
+        const form = document.getElementById('upload-form');
+
+        function showPreview() {
+            const file = input.files[0];
+            submitBtn.disabled = !file;
+            emptyView.hidden = !!file;
+            previewView.hidden = !file;
+            if (file) {
+                previewImg.src = URL.createObjectURL(file);
+                previewName.textContent = file.name;
+            }
+        }
+
+        input.addEventListener('change', showPreview);
+
+        ['dragenter', 'dragover'].forEach(evt => dropzone.addEventListener(evt, e => {
+            e.preventDefault();
+            dropzone.classList.add('dragging');
+        }));
+        ['dragleave', 'drop'].forEach(evt => dropzone.addEventListener(evt, e => {
+            e.preventDefault();
+            dropzone.classList.remove('dragging');
+        }));
+        dropzone.addEventListener('drop', e => {
+            if (e.dataTransfer.files.length) {
+                input.files = e.dataTransfer.files;
+                showPreview();
+            }
+        });
+
+        form.addEventListener('submit', () => {
+            dropzone.classList.add('scanning');
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+            submitBtn.querySelector('.btn-label').textContent = 'Scanning…';
+        });
+
+        document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === tab));
+            document.querySelectorAll('.image-frame img').forEach(img => {
+                img.hidden = img.id !== tab.dataset.target;
+            });
+        }));
+
+        // Restore the form if the user comes back with the browser's Back button
+        window.addEventListener('pageshow', () => {
+            dropzone.classList.remove('scanning');
+            submitBtn.classList.remove('loading');
+            submitBtn.querySelector('.btn-label').textContent = 'Detect fruit';
+            showPreview();
+        });
+
+        const results = document.getElementById('results');
+        if (results) results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    </script>
 </body>
 </html>

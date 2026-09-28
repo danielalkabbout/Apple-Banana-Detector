@@ -1,0 +1,28 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Images (user uploads, processed results and dataset images)
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.webp
+*.txt
+# Uploads folder, but keep its dataset label files
+static/uploads/*
+!static/uploads/train/
+!static/uploads/valid/
+!static/uploads/test/
+
+# YOLO training output
+runs/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

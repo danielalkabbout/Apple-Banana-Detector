@@ -1,0 +1,6 @@
+venv/
+.git/
+__pycache__/
+static/uploads/train/
+static/uploads/valid/
+static/uploads/test/
